@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 // Let TypeScript know that XLSX is available on the window object
 declare const XLSX: any;
@@ -110,7 +110,7 @@ const titlesByZone: Record<string, string> = {
 export const InspectionPage: React.FC<InspectionPageProps> = ({ zone, inspector, date, onBack }) => {
   const [responses, setResponses] = useState<Responses>({});
   const [isUploading, setIsUploading] = useState<boolean>(false);
-  const [uploadStatus, setUploadStatus] = useState<{ status: 'success' | 'error' | 'idle'; message: string; url?: string }>({ status: 'idle', message: '' });
+  const [uploadStatus, setUploadStatus] = useState<{ status: 'success' | 'error' | 'idle'; message: string; }>({ status: 'idle', message: '' });
 
   const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('es-ES', {
     year: 'numeric',
@@ -120,6 +120,16 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({ zone, inspector,
   
   const sections = sectionsByZone[zone] || [];
   const totalQuestions = sections.length * questionsTemplate.length;
+
+  useEffect(() => {
+    if (uploadStatus.status === 'success') {
+      const timer = setTimeout(() => {
+        onBack();
+      }, 3000); // Redirect after 3 seconds
+
+      return () => clearTimeout(timer); // Cleanup timer on unmount
+    }
+  }, [uploadStatus.status, onBack]);
 
   const isFormComplete = useMemo(() => {
     // FIX: Explicitly type 'r' as 'Response' to resolve ambiguity from Object.values return type.
@@ -194,7 +204,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({ zone, inspector,
         const result = await response.json();
 
         if (result.status === 'success') {
-            setUploadStatus({ status: 'success', message: 'Reporte subido exitosamente.', url: result.url });
+            setUploadStatus({ status: 'success', message: 'Reporte subido exitosamente.' });
         } else {
             setUploadStatus({ status: 'error', message: result.message || 'Ocurrió un error desconocido en el servidor.' });
         }
@@ -250,20 +260,7 @@ export const InspectionPage: React.FC<InspectionPageProps> = ({ zone, inspector,
                 <svg className="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <h3 className="text-2xl font-bold text-gray-800 mt-4">¡Éxito!</h3>
                 <p className="mt-2 text-gray-600">{uploadStatus.message}</p>
-                <a
-                  href={uploadStatus.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 block text-blue-600 hover:underline break-all font-medium"
-                >
-                  Ver reporte en Google Drive
-                </a>
-                <button
-                  onClick={onBack}
-                  className="mt-6 w-full px-4 py-3 font-semibold text-white bg-red-600 rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
-                >
-                  Volver al Inicio
-                </button>
+                <p className="mt-4 text-sm text-gray-500">Regresando a la página de inicio...</p>
               </>
             )}
             {uploadStatus.status === 'error' && (
